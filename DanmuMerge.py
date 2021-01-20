@@ -12,6 +12,8 @@ def merge_general(danmu):
         danmu = "ohhhhhhh"
     elif "OHHHH" in danmu:
         danmu = "OHHHHHHH"
+    elif "88888888" in danmu:
+        danmu = "88888888"
     else:
         # 合并常规打call弹幕
         match = re.search("(\\\\\w{1,5}/){3}", danmu)
