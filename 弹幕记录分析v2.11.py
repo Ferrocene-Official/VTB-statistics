@@ -12,8 +12,11 @@ from datetime import datetime
 # 根据统计对象选择需要的合并逻辑
 from DanmuMerge import merge_xinke as merge
 
+fontname = ["黑体", "楷体"]
 
 # 接收输入信息
+
+
 def getinputs():
     global paths, numpath, num1, num2, num3, delta, sigfigure, sigfiguretime, sigcloud
     paths = os.listdir("input")
@@ -220,13 +223,11 @@ def generatechart(checkbox_time_offset):
     else:
         plt.title("弹幕密度统计图", fontsize=18)
 
-    print("checkbox_time_offset: ", checkbox_time_offset)
-    time_8hour = delta1 = timedelta(hours=8)
+    time_8hour = timedelta(hours=8)
     time_offset = datetime.fromtimestamp(0)
     if checkbox_time_offset == 1:
         time_offset = datetime.fromtimestamp(
             starttime / 1000) - time_offset + time_8hour
-        print("v")
     else:
         time_offset = time_offset - time_offset
 
@@ -344,10 +345,11 @@ ScaleFactor = ctypes.windll.shcore.GetScaleFactorForDevice(0)
 window.tk.call('tk', 'scaling', ScaleFactor / 75)
 window.title("弹幕记录分析 by 二茂铁")
 window.geometry('1400x800')
-fontdefault = ('黑体', 12)
+fontdefault = (fontname[0], 12)
+font1 = (fontname[1], 12)
 # 添加程序说明
 label0 = tk.Label(window, text="本程序用于分析：\nhttps://matsuri.icu/ 网站上JSON格式的直播数据记录",
-                  bg='white', font=('黑体', 14), width=60, height=3)
+                  font=(fontname[0], 14), width=60, height=3)
 label0.pack()
 # 添加数值输入栏
 label1 = tk.Label(window, text="弹幕排行显示数", font=fontdefault)
@@ -397,14 +399,14 @@ button1.place(x=400, y=110)
 # 添加文字结果输出窗口
 scroll = tk.Scrollbar()
 scroll.pack(side=tk.RIGHT, fill=tk.Y)
-text1 = tk.Text(window, width=70, height=20, font=fontdefault)
+text1 = tk.Text(window, width=70, height=20, font=font1)
 text1.pack(side=tk.RIGHT, fill=tk.Y)
 scroll.config(command=text1.yview)
 text1.config(yscrollcommand=scroll.set)
 # 添加运行信息输出窗口
 label4 = tk.Label(window, text="运行信息窗口", font=fontdefault)
 label4.place(x=0, y=350)
-text2 = tk.Text(window, width=60, height=15, font=fontdefault)
+text2 = tk.Text(window, width=60, height=15, font=font1)
 text2.place(x=0, y=380)
 # 显示提示信息
 text2.insert('end', "注意在代码import部分选择合适的弹幕合并函数\n")
