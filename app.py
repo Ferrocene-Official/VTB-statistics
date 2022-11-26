@@ -237,9 +237,9 @@ def runanalysis(files, plot_type,  num1, num2, num3, works, delta, sigfiguretime
     #     print("file=" ,file)
     #     print("name=",file.name)
     #     break
-    text_output = []
+    file_output = []
     if (files == None):
-        return None,[], text_path, "没有输入文件"
+        return None,[], file_output, "没有输入文件"
 
     live = Live(files[0].name)
     # time.sleep(10)
@@ -275,10 +275,8 @@ def runanalysis(files, plot_type,  num1, num2, num3, works, delta, sigfiguretime
     # 对象按时间排序
     objects.sort(key=lambda x: x.time, reverse=False)
 
-    sigfigure = "弹幕密度统计图" in works
-    sigcloud = "词云" in works
-    # danmustatistic()
-# 读取弹幕及其发送者,来自 danmustatistic()
+
+    # 读取弹幕及其发送者,来自 danmustatistic()
     danmutotal, nametotal = {}, {}
     totallist = []
     for obj in objects:
@@ -301,7 +299,7 @@ def runanalysis(files, plot_type,  num1, num2, num3, works, delta, sigfiguretime
     # 将原始弹幕列表转为字符串，用于制作词云
     totallist = ','.join(totallist)
     text += printdanmus(danmutotal, nametotal, num1, num2)
-    # # 读取SC、礼物和舰长 giftstatistic():
+    # 读取SC、礼物和舰长 giftstatistic():
     payertotal = {}
     for obj in objects:
         if isinstance(obj, Gift) or isinstance(obj, SC):
@@ -312,41 +310,41 @@ def runanalysis(files, plot_type,  num1, num2, num3, works, delta, sigfiguretime
     text += others(totallist)
 
     cloud = ["", ""]
-    if "弹幕云" in works:
+
+    cloud_visiable = "弹幕云" in works
+    if cloud_visiable:
         cloud[0] = "/tmp/output/" + "弹幕云_" + \
             live.vtbname + '_' + live.livename + ".png"
+    
     if "词云" in works:
+        cloud_visiable = True
         cloud[1] = "/tmp/output/" + "词云_" + \
             live.vtbname + '_' + live.livename + ".png"
+
     print(cloud)
-    generatecloud(totallist, cloud)
+    cloud = generatecloud(totallist, cloud)
+    file_output.extend(cloud)
     # text1.see(tk.END)
     # if sigfigure:
     #     generatechart(sigfiguretime)
 
     # text2.insert('end', "数据分析完成\n\n")
     # text2.see(tk.END)
-
-    if "文本文件" in works:
+ 
+    if(len(text)>0):
         text_path = "/tmp/output/" + live.vtbname + '_' +  live.livename + ".txt"
         file2 = open(text_path, 'w', encoding='utf-8')
-        text_output.append(
-                {
-                    "name": text_path
-                }
-            )
-
         file2.write(text)
+        file2.close()
+        file_output.append(text_path)
+
     if "文本框内容" not in works:
         text = ""
-    print("text_path=",text_path)
-    # with open(text_path, 'rb') as fsrc:
-    #     print("open 1")
+
     
-    # with open("C:\tmp\output\弥希Miki_恋爱奇谭-不存在的真相-.txt", 'rb') as fsrc:
-    #     print("open 2")
-    # return None, cloud, "C:\tmp\output\弥希Miki_恋爱奇谭-不存在的真相-.txt", text
-    return None, cloud,text_output, text
+    sigfigure = "弹幕密度统计图" in works 
+
+    return gr.Plot.update(visible=sigfigure),gr.Gallery.update(visible=cloud_visiable,value=cloud) , file_output, text
 
 
 def outbreak(plot_type, r, month, countries, social_distancing):
@@ -398,12 +396,12 @@ inputs = [
 ]
 
 #
-outputs = [gr.Plot(label="弹幕密度统计图"),
-           gr.Gallery(type="filepath", label="弹幕云&词云").style(
+outputs = [gr.Plot(label="弹幕密度统计图",visible=False),
+           gr.Gallery(type="filepath", label="弹幕云&词云",visible=False).style(
                grid=[1, 1, 2, 2, 3], height="auto", container=False),
            #    gr.Gallery(type="filepath", label="弹幕云").style(height="auto"),
            #    gr.Gallery(type="filepath", label="弹幕词云").style(height="auto"),
-           gr.File(label="分析结果",type="filepath"),
+           gr.File(label="输出文件",type="filepath", file_count="multiple"),
            gr.TextArea(label="分析结果"),
            ]
 demo = gr.Interface(
