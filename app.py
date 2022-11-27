@@ -214,34 +214,31 @@ def generatecloud(totallist, cloud):
     return result
 
 # 程序选项
-    # gr.File(label = "待分析的文件"),
-    # gr.Dropdown(["Matplotlib", "Plotly"], label="绘图模式"),
-    # gr.Slider(0, 500, 30, label="弹幕内容排行榜"),
-    # gr.Slider(0, 500, 20, label="水友弹幕互动排行榜"),
-    # gr.Slider(0, 500, 10, label="付费金额排行榜"),
-    # gr.CheckboxGroup(
-    #     ["弹幕密度统计图", "词云"], label="输出内容", value=["弹幕密度统计图"]
-    # ),
-    # gr.Checkbox(label="弹幕密度统计图使用相对时间"),
-    # gr.Slider(0, 60, 2, label="统计图时间间隔(分钟)"),
+ # files 待分析的文件（目前只分析一个）, works 输出内容 ["文本框内容", "弹幕密度统计图", "弹幕云", "词云" ]
+ # num1=30 弹幕内容排行榜, num2=20 水友弹幕互动排行榜, num3=10 直播付费金额排行榜,
+ # delta=True 弹幕密度统计图使用相对时间, sigfiguretime=2 统计图时间间隔(分钟)
 
 
-# def outbreak(plot_type, r, month, countries, social_distancing):
-def runanalysis(files, plot_type,  num1, num2, num3, works, delta, sigfiguretime):
+def runanalysis(files, works=["弹幕密度统计图"], plot_type="Matplotlib", num1=30, num2=20, num3=10, delta=True, sigfiguretime=2):
     os.makedirs('/tmp/output', exist_ok=True)
     log_text = "分析开始时间：{}\n".format(datetime.now())
     # print(files)
-
-    # for idx, file in enumerate(path):
+    # for idx, file in enumerate(files):
     #     print("idx=",idx)
     #     print("file=" ,file)
     #     print("name=",file.name)
     #     break
+
     file_output = []
     if (files == None):
-        return None,[], file_output, "没有输入文件"
+        return None, [], file_output, "请输入文件"
 
-    live = Live(files[0].name)
+    file0 = files[0].name
+    print("file0:", file0)
+    if not file0.endswith(".json"):
+        return None, [], file_output, "文件格式错误，请输入json文件"
+
+    live = Live(file0)
     # time.sleep(10)
 
     log_text += "已读取全部JSON文件，正在解析数据\n"
@@ -275,7 +272,6 @@ def runanalysis(files, plot_type,  num1, num2, num3, works, delta, sigfiguretime
     # 对象按时间排序
     objects.sort(key=lambda x: x.time, reverse=False)
 
-
     # 读取弹幕及其发送者,来自 danmustatistic()
     danmutotal, nametotal = {}, {}
     totallist = []
@@ -295,6 +291,7 @@ def runanalysis(files, plot_type,  num1, num2, num3, works, delta, sigfiguretime
     # 计算弹幕总数
     numdanmu = len(totallist)
     text = "弹幕总数：{}条\n".format(numdanmu)
+    text_summary = text
 
     # 将原始弹幕列表转为字符串，用于制作词云
     totallist = ','.join(totallist)
@@ -315,13 +312,13 @@ def runanalysis(files, plot_type,  num1, num2, num3, works, delta, sigfiguretime
     if cloud_visiable:
         cloud[0] = "/tmp/output/" + "弹幕云_" + \
             live.vtbname + '_' + live.livename + ".png"
-    
+
     if "词云" in works:
         cloud_visiable = True
         cloud[1] = "/tmp/output/" + "词云_" + \
             live.vtbname + '_' + live.livename + ".png"
 
-    print(cloud)
+    # print("cloud=", cloud)
     cloud = generatecloud(totallist, cloud)
     file_output.extend(cloud)
     # text1.see(tk.END)
@@ -330,21 +327,20 @@ def runanalysis(files, plot_type,  num1, num2, num3, works, delta, sigfiguretime
 
     # text2.insert('end', "数据分析完成\n\n")
     # text2.see(tk.END)
- 
-    if(len(text)>0):
-        text_path = "/tmp/output/" + live.vtbname + '_' +  live.livename + ".txt"
+
+    if (len(text) > 0):
+        text_path = "/tmp/output/" + live.vtbname + '_' + live.livename + ".txt"
         file2 = open(text_path, 'w', encoding='utf-8')
         file2.write(text)
         file2.close()
         file_output.append(text_path)
 
     if "文本框内容" not in works:
-        text = ""
+        text = text_summary
 
-    
-    sigfigure = "弹幕密度统计图" in works 
+    sigfigure = "弹幕密度统计图" in works
 
-    return gr.Plot.update(visible=sigfigure),gr.Gallery.update(visible=cloud_visiable,value=cloud) , file_output, text
+    return gr.Plot.update(visible=sigfigure), gr.Gallery.update(visible=cloud_visiable, value=cloud), file_output, text
 
 
 def outbreak(plot_type, r, month, countries, social_distancing):
@@ -381,39 +377,41 @@ def outbreak(plot_type, r, month, countries, social_distancing):
 
 
 inputs = [
-
     gr.File(label="待分析的文件", file_count="multiple"
             ),
-    gr.Dropdown(["Matplotlib", "Plotly"], label="绘图模式", value="Matplotlib"),
-    gr.Slider(0, 500, 30, label="弹幕内容排行榜"),
-    gr.Slider(0, 500, 20, label="水友弹幕互动排行榜"),
-    gr.Slider(0, 500, 10, label="直播付费金额排行榜"),
     gr.CheckboxGroup(
-        ["文本框内容", "文本文件", "弹幕密度统计图", "弹幕云", "词云", ], label="输出内容(输出弹幕云&词云会消耗较多时间)", value=["弹幕密度统计图", "文本文件", "弹幕云"]
+        ["文本框内容", "弹幕密度统计图", "弹幕云", "词云", ], label="输出内容(输出弹幕云&词云会消耗较多时间)", value=["弹幕密度统计图"]
     ),
+    gr.Dropdown(["Matplotlib", "Plotly"], label="绘图模式", value="Matplotlib"),
+    gr.Slider(0, 500, value=30, label="弹幕内容排行榜"),
+    gr.Slider(0, 500, value=20, label="水友弹幕互动排行榜"),
+    gr.Slider(0, 500, value=10, label="直播付费金额排行榜"),
     gr.Checkbox(label="弹幕密度统计图使用相对时间", value=True),
-    gr.Slider(0, 60, 2, label="统计图时间间隔(分钟)"),
+    gr.Slider(0, 60, value=2, label="统计图时间间隔(分钟)"),
 ]
 
-#
-outputs = [gr.Plot(label="弹幕密度统计图",visible=False),
-           gr.Gallery(type="filepath", label="弹幕云&词云",visible=False).style(
+
+outputs = [gr.Plot(label="弹幕密度统计图", visible=False),
+           gr.Gallery(type="filepath", label="弹幕云&词云", visible=False).style(
                grid=[1, 1, 2, 2, 3], height="auto", container=False),
            #    gr.Gallery(type="filepath", label="弹幕云").style(height="auto"),
            #    gr.Gallery(type="filepath", label="弹幕词云").style(height="auto"),
-           gr.File(label="输出文件",type="filepath", file_count="multiple"),
+           gr.File(label="输出文件", file_count="multiple"),
            gr.TextArea(label="分析结果"),
            ]
 demo = gr.Interface(
+    title="弹幕数据分析器",
     fn=runanalysis,
     inputs=inputs,
     outputs=outputs,
-    # examples=[
-    #     ["Matplotlib", 2, "March", ["Mexico", "UK"], True],
-    #     ["Plotly", 3.6, "February", ["Canada", "Mexico", "UK"], False],
-    # ],
-    cache_examples=True,
-    description="本程序用于分析：https://matsuri.icu/ 网站上JSON格式的直播数据记录"
+    examples=[
+        [[os.path.join(os.path.dirname(__file__), "sample/弥希Miki_弥希MIKI的ACG广播部_1668257873478.json")],
+            ["弹幕密度统计图", "弹幕云", "词云"]],
+        [[os.path.join(os.path.dirname(__file__), "sample/小柔Channel_唱会儿__1669112994818.json")],
+            ["文本框内容", "弹幕密度统计图"]],
+    ],
+    cache_examples=False,
+    description="本程序用于分析 https://matsuri.icu/ 网站上JSON格式的直播数据记录"
 )
 
 if __name__ == "__main__":
