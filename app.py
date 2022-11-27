@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import gradio as gr
 from math import sqrt
 import matplotlib
-
+from datetime import timedelta
 matplotlib.use("Agg")
 
 fontname = ["黑体", "楷体"]
@@ -22,7 +22,7 @@ fontname = ["黑体", "楷体"]
 弹幕内容排行榜 = "弹幕内容排行榜"
 水友弹幕互动排行榜 = "水友弹幕互动排行榜"
 直播付费金额排行榜 = "直播付费金额排行榜"
-
+弹幕密度统计图 = "弹幕密度统计图"
 # 读取直播信息
 
 
@@ -74,61 +74,35 @@ class Gift():
         self.price = price
 
 
-def getLabelData(data, num):
-    danmunums = list(data.items())
-    danmunums.sort(key=lambda x: x[1], reverse=True)
+# 二维数组转换为label显示的内容
+def array2label(data, num=0):
     result = {}
-    for i in range(min(num, len(danmunums))):
-        # text += ("第{}：{}，弹幕{}条\n".format(
-        #     i + 1, danmunums[i][0], danmunums[i][1]))
-        result[danmunums[i][0]] = danmunums[i][1]
-    return result
-
-
-def array2label(data, num):
-    result = {}
-    if (len(data) < 1):
+    lenth = len(data)
+    if (lenth < 1):
         return result
+    if (num < 1):
+        num = lenth
     base = data[0][1]
-    for i in range(min(num, len(data))):
+    for i in range(min(num, lenth)):
         result[data[i][0] + " - " + str(data[i][1])] = data[i][1]/base
     return result
 
-# 生成对象
+# 二维数组转换为打印的内容
 
 
-# 输出弹幕频次排行和发送者排行
-    # gr.Slider(0, 500, 30, label="弹幕内容排行榜"),
-    # gr.Slider(0, 500, 20, label="水友弹幕互动排行榜"),
-    # gr.Slider(0, 500, 10, label="付费金额排行榜"),
+def printData(title, content, data, num=0):
+    text = "\n" + title+"\n"
 
-def printdanmus(danmutotal, nametotal, num1, num2):
-    danmunums = list(danmutotal.items())
-    danmunums.sort(key=lambda x: x[1], reverse=True)
+    lenth = len(data)
+    if (lenth < 1):
+        text += "无\n"
+        return text
+    if (num < 1):
+        num = lenth
 
-    text = "\n"+水友弹幕互动排行榜+"\n"
-    for i in range(min(num1, len(danmunums))):
-        text += ("第{}：{}，共{}条\n".format(
-            i + 1, danmunums[i][0], danmunums[i][1]))
-    gatlings = list(nametotal.items())
-    gatlings.sort(key=lambda x: x[1], reverse=True)
-
-    text += ("\n水友弹幕互动排行榜\n")
-    for i in range(min(num2, len(gatlings))):
-        text += ("第{}：{}，弹幕{}条\n".format(
-            i + 1, gatlings[i][0], gatlings[i][1]))
-    return text
-
-
-# 直播付费金额排行榜
-
-def printgifts(payertotal, num3):
-    tiangous = list(payertotal.items())
-    tiangous.sort(key=lambda x: x[1], reverse=True)
-    text = ("\n直播付费金额排行榜\n")
-    for i in range(min(num3, len(tiangous))):
-        text += ("第{}：{}，金额{:.1f}\n".format(
-            i + 1, tiangous[i][0], tiangous[i][1]))
+    for i in range(min(num, lenth)):
+        text += (content.format(
+            i + 1, data[i][0], data[i][1]))
     return text
 
 # 输出其他统计项，需根据统计对象修改
@@ -143,14 +117,10 @@ def others(totallist):
         text += ("共有{} {}个\n".format(otheritem, specnum2))
     return text
 
-# 制作弹幕密度统计图
+# 制作弹幕密度统计图所需的数据
 
 
-def generatechart(objects, ref_time, starttime, delta, title):
-    from datetime import timedelta
-    import matplotlib.pyplot as plt
-    import matplotlib.ticker as ticker
-    import matplotlib
+def generatechartData(objects, ref_time, starttime, dtime):
 
     # 消去日期
     for obj in objects:
@@ -160,8 +130,6 @@ def generatechart(objects, ref_time, starttime, delta, title):
     matplotlib.rcParams['font.sans-serif'] = ['SimHei']
     timearray0 = datetime.fromtimestamp(objects[0].time)
     danmucount = 0
-    plt.figure(figsize=(16, 9))
-    plt.title(title, fontsize=18)
 
     time_8hour = timedelta(hours=8)
     time_offset = datetime.fromtimestamp(0)
@@ -171,37 +139,49 @@ def generatechart(objects, ref_time, starttime, delta, title):
     else:
         time_offset = time_offset - time_offset
 
-    # 设置坐标轴
-    plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(20 / delta))
-    plt.xlabel("时间", fontsize=18)
-    plt.ylabel("弹幕密度（个/分钟）", fontsize=18)
-    plt.xticks(fontsize=14)
-    plt.yticks(fontsize=14)
     pltxs, pltys = [], []
     for obj in objects:
         if isinstance(obj, Danmu) or isinstance(obj, SC):
             timearray = datetime.fromtimestamp(obj.time)
-            if timearray < timearray0 + timedelta(minutes=delta):
+            if timearray < timearray0 + timedelta(minutes=dtime):
                 danmucount += 1
             else:
                 pltxs.append((timearray0-time_offset).strftime("%H:%M"))
-                pltys.append(danmucount / delta)
-                timearray0 += timedelta(minutes=delta)
+                pltys.append(danmucount / dtime)
+                timearray0 += timedelta(minutes=dtime)
                 danmucount = 1
                 # 补充无弹幕时段数据
-                while timearray0 + timedelta(minutes=delta) < timearray:
+                while timearray0 + timedelta(minutes=dtime) < timearray:
                     pltxs.append((timearray0-time_offset).strftime("%H:%M"))
                     pltys.append(0)
-                    timearray0 += timedelta(minutes=delta)
+                    timearray0 += timedelta(minutes=dtime)
     pltxs.append((timearray0-time_offset).strftime("%H:%M"))
-    pltys.append(danmucount / delta)
-    # 用x,y坐标列表生成统计图
-    # plt.xlim(pltxs.min(), pltxs.max())
+    pltys.append(danmucount / dtime)
+    return pltxs, pltys
+
+# 绘制弹幕密度统计图
+
+
+def generatechart(pltxs, pltys, dtime, title):
+    from datetime import timedelta
+    import matplotlib.pyplot as plt
+    import matplotlib.ticker as ticker
+    import matplotlib
+
+    matplotlib.rcParams['font.sans-serif'] = ['SimHei']
+    plt.figure(figsize=(16, 9))
+    plt.title(title, fontsize=18)
+
+    # 设置坐标轴
+    plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(20 / dtime))
+    plt.xlabel("时间", fontsize=18)
+    plt.ylabel("弹幕密度（条/分钟）", fontsize=18)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
     plt.bar(pltxs,
             pltys,
             # align='edge',
             color='lightblue')
-
     return plt
 
 # 制作词云
@@ -233,10 +213,10 @@ def generatecloud(totallist, cloud):
 # 程序选项
  # files 待分析的文件（目前只分析一个）, works 输出内容 ["文本框内容", "弹幕密度统计图", "弹幕云", "词云" ]
  # num1=30 弹幕内容排行榜, num2=20 水友弹幕互动排行榜, num3=10 直播付费金额排行榜,
- # delta=True 弹幕密度统计图使用相对时间, sigfiguretime=2 统计图时间间隔(分钟)
+ # ref_time=True 弹幕密度统计图使用相对时间, dtime=2 统计图时间间隔(分钟)
 
 
-def runanalysis(files, works=["弹幕密度统计图"], plot_type="Matplotlib", num1=30, num2=20, num3=10, ref_time=True, sigfiguretime=2):
+def runanalysis(files, works=[弹幕密度统计图], plot_type="Matplotlib", num1=30, num2=20, num3=10, dtime=2, ref_time=True):
     os.makedirs('/tmp/output', exist_ok=True)
     log_text = "分析开始时间：{}\n".format(datetime.now())
     # print(files)
@@ -248,7 +228,7 @@ def runanalysis(files, works=["弹幕密度统计图"], plot_type="Matplotlib", 
 
     file_output = []
     if (files == None):
-        return None, [], {}, {}, {}, file_output, "请输入文件"
+        return None, [], {}, {}, {}, file_output,  "请输入文件"
 
     file0 = files[0].name
     print("file0:", file0)
@@ -260,12 +240,6 @@ def runanalysis(files, works=["弹幕密度统计图"], plot_type="Matplotlib", 
 
     log_text += "已读取全部JSON文件，正在解析数据\n"
 
-    # # 创建文本文件记录文字输出
-    # file2 = open("output//" + vtbname + '_' +
-    #              livename + ".txt", 'w', encoding='utf-8')
-    # # 清空输出窗口
-    # text1.delete('1.0', 'end')
-    # text2.insert('end', "右侧文字结果输出窗口已清空\n")
     # 来自generateobjects()
     objects = []
     for record in live.records:
@@ -315,13 +289,16 @@ def runanalysis(files, works=["弹幕密度统计图"], plot_type="Matplotlib", 
 
     danmunums = list(danmutotal.items())
     danmunums.sort(key=lambda x: x[1], reverse=True)
-    danmunums = array2label(danmunums, num1)
+    danmunums = danmunums[0:num1]
+    text += printData(弹幕内容排行榜, "第{}：{}，共{}条\n", danmunums)
+    danmunums = array2label(danmunums)
 
     gatlings = list(nametotal.items())
     gatlings.sort(key=lambda x: x[1], reverse=True)
-    gatlings = array2label(gatlings, num2)
+    gatlings = gatlings[0:num2]
+    text += printData(水友弹幕互动排行榜, "第{}：{}，弹幕{}条\n", gatlings)
+    gatlings = array2label(gatlings)
 
-    text += printdanmus(danmutotal, nametotal, num1, num2)
     # 读取SC、礼物和舰长 giftstatistic():
     payertotal = {}
     for obj in objects:
@@ -332,8 +309,9 @@ def runanalysis(files, works=["弹幕密度统计图"], plot_type="Matplotlib", 
 
     tiangous = list(payertotal.items())
     tiangous.sort(key=lambda x: x[1], reverse=True)
-    tiangous = array2label(tiangous, num3)
-    text += printgifts(payertotal, num3)
+    tiangous = tiangous[0:num3]
+    text += printData(直播付费金额排行榜, "第{}：{}，金额{:.1f}\n", tiangous)
+    tiangous = array2label(tiangous)
     text += others(totallist)
 
     cloud = ["", ""]
@@ -362,76 +340,54 @@ def runanalysis(files, works=["弹幕密度统计图"], plot_type="Matplotlib", 
     if "文本框内容" not in works:
         text = text_summary
 
-    sigfigure = "弹幕密度统计图" in works
+    sigfigure = 弹幕密度统计图 in works
     if sigfigure:
-        figure_title = "弹幕密度统计图"
+        figure_title = 弹幕密度统计图
+        figure_path = "/tmp/output/" + 弹幕密度统计图 + "_" + \
+            live.vtbname + '_' + live.livename + ".png"
         if len(files) == 1:
             arraystart = datetime.fromtimestamp(live.starttime / 1000)
             figure_title = arraystart.strftime(
-                "%Y-%m-%d %H:%M ") + live. livename + "  弹幕密度统计图"
-        plt = generatechart(objects, ref_time, live.starttime,
-                            sigfiguretime, figure_title)
-        figure_path = "/tmp/output/" + figure_title + ".png"
-        plt.savefig(figure_path, dpi=300, bbox_inches='tight')
-        file_output.append(figure_path)
+                "%Y-%m-%d %H:%M ") + live.vtbname + " " + live.livename + " " + 弹幕密度统计图
+        plt = None
+        pltxs, pltys = generatechartData(objects, ref_time, live.starttime,
+                                         dtime)
+        df = pd.DataFrame({"Hour": pltxs})
+        if plot_type == "Plotly":
+            fig = px.line(y=pltys, x=pltxs)
+            fig.update_layout(
+                title=figure_title,
+                xaxis_title="时间",
+                yaxis_title="弹幕密度（条/分钟）",
+            )
+            plt = fig
+        else:
+            plt = generatechart(pltxs, pltys, dtime, figure_title)
+            plt.savefig(figure_path, dpi=300, bbox_inches='tight')
+            file_output.append(figure_path)
 
     return gr.Plot.update(visible=sigfigure, value=plt), gr.Gallery.update(visible=cloud_visiable, value=cloud), danmunums, gatlings, tiangous, file_output, text
-
-
-def outbreak(plot_type, r, month, countries, social_distancing):
-    months = ["January", "February", "March", "April", "May"]
-    m = months.index(month)
-    start_day = 30 * m
-    final_day = 30 * (m + 1)
-    x = np.arange(start_day, final_day + 1)
-    pop_count = {"USA": 350, "Canada": 40, "Mexico": 300, "UK": 120}
-    if social_distancing:
-        r = sqrt(r)
-    df = pd.DataFrame({"day": x})
-    for country in countries:
-        df[country] = x ** (r) * (pop_count[country] + 1)
-
-    if plot_type == "Matplotlib":
-        fig = plt.figure()
-        plt.plot(df["day"], df[countries].to_numpy(),)
-        plt.title("Outbreak in " + month)
-        plt.ylabel("Cases")
-        plt.xlabel("Days since Day 0")
-        plt.legend(countries)
-        return fig
-    elif plot_type == "Plotly":
-        fig = px.line(df, x="day", y=countries)
-        fig.update_layout(
-            title="Outbreak in " + month,
-            xaxis_title="Cases",
-            yaxis_title="Days Since Day 0",
-        )
-        return fig
-    else:
-        raise ValueError("A plot type must be selected")
 
 
 inputs = [
     gr.File(label="待分析的文件", file_count="multiple"
             ),
     gr.CheckboxGroup(
-        ["文本框内容", "弹幕密度统计图", "弹幕云", "词云", ], label="输出内容(输出弹幕云&词云会消耗较多时间)", value=["弹幕密度统计图"]
+        ["文本框内容", "弹幕密度统计图", "弹幕云", "词云", ], label="输出内容(输出弹幕云&词云会消耗较多时间)", value=[弹幕密度统计图]
     ),
     gr.Dropdown(["Matplotlib", "Plotly"], label="绘图模式", value="Matplotlib"),
-    gr.Slider(0, 500, value=30, label=水友弹幕互动排行榜),
+    gr.Slider(0, 500, value=30, label=弹幕内容排行榜),
     gr.Slider(0, 500, value=20, label=水友弹幕互动排行榜),
     gr.Slider(0, 500, value=10, label=直播付费金额排行榜),
-    gr.Checkbox(label="弹幕密度统计图使用相对时间", value=True),
     gr.Slider(0, 60, value=2, label="统计图时间间隔(分钟)"),
+    gr.Checkbox(label="弹幕密度统计图使用相对时间", value=True),
 ]
 
 
-outputs = [gr.Plot(label="弹幕密度统计图", visible=False),
+outputs = [gr.Plot(label=弹幕密度统计图, visible=False),
            gr.Gallery(type="filepath", label="弹幕云&词云", visible=False).style(
                grid=[1, 1, 2, 2, 3], height="auto", container=False),
-           #    gr.Gallery(type="filepath", label="弹幕云").style(height="auto"),
-           #    gr.Gallery(type="filepath", label="弹幕词云").style(height="auto"),
-           gr.Label(label=水友弹幕互动排行榜),
+           gr.Label(label=弹幕内容排行榜),
            gr.Label(label=水友弹幕互动排行榜),
            gr.Label(label=直播付费金额排行榜),
            gr.File(label="输出文件", file_count="multiple"),
