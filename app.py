@@ -17,13 +17,15 @@ import matplotlib
 
 matplotlib.use("Agg")
 
-
-# 根据统计对象选择需要的合并逻辑
-
 fontname = ["黑体", "楷体"]
 
+弹幕内容排行榜 = "弹幕内容排行榜"
+水友弹幕互动排行榜 = "水友弹幕互动排行榜"
+直播付费金额排行榜 = "直播付费金额排行榜"
 
 # 读取直播信息
+
+
 class Live():
     def __init__(self, records, vtbname, livename, starttime, endtime):
         self.records = records
@@ -71,6 +73,27 @@ class Gift():
         self.uid = uid
         self.price = price
 
+
+def getLabelData(data, num):
+    danmunums = list(data.items())
+    danmunums.sort(key=lambda x: x[1], reverse=True)
+    result = {}
+    for i in range(min(num, len(danmunums))):
+        # text += ("第{}：{}，弹幕{}条\n".format(
+        #     i + 1, danmunums[i][0], danmunums[i][1]))
+        result[danmunums[i][0]] = danmunums[i][1]
+    return result
+
+
+def array2label(data, num):
+    result = {}
+    if (len(data) < 1):
+        return result
+    base = data[0][1]
+    for i in range(min(num, len(data))):
+        result[data[i][0] + " - " + str(data[i][1])] = data[i][1]/base
+    return result
+
 # 生成对象
 
 
@@ -83,7 +106,7 @@ def printdanmus(danmutotal, nametotal, num1, num2):
     danmunums = list(danmutotal.items())
     danmunums.sort(key=lambda x: x[1], reverse=True)
 
-    text = "\n弹幕内容排行榜\n"
+    text = "\n"+水友弹幕互动排行榜+"\n"
     for i in range(min(num1, len(danmunums))):
         text += ("第{}：{}，共{}条\n".format(
             i + 1, danmunums[i][0], danmunums[i][1]))
@@ -225,12 +248,12 @@ def runanalysis(files, works=["弹幕密度统计图"], plot_type="Matplotlib", 
 
     file_output = []
     if (files == None):
-        return None, [], file_output, "请输入文件"
+        return None, [], {}, {}, {}, file_output, "请输入文件"
 
     file0 = files[0].name
     print("file0:", file0)
     if not file0.endswith(".json"):
-        return None, [], file_output, "文件格式错误，请输入json文件"
+        return None, [], {}, {}, {}, file_output, "文件格式错误，请输入json文件"
 
     live = Live(file0)
     # time.sleep(10)
@@ -289,6 +312,15 @@ def runanalysis(files, works=["弹幕密度统计图"], plot_type="Matplotlib", 
 
     # 将原始弹幕列表转为字符串，用于制作词云
     totallist = ','.join(totallist)
+
+    danmunums = list(danmutotal.items())
+    danmunums.sort(key=lambda x: x[1], reverse=True)
+    danmunums = array2label(danmunums, num1)
+
+    gatlings = list(nametotal.items())
+    gatlings.sort(key=lambda x: x[1], reverse=True)
+    gatlings = array2label(gatlings, num2)
+
     text += printdanmus(danmutotal, nametotal, num1, num2)
     # 读取SC、礼物和舰长 giftstatistic():
     payertotal = {}
@@ -297,6 +329,10 @@ def runanalysis(files, works=["弹幕密度统计图"], plot_type="Matplotlib", 
             if obj.uname not in payertotal.keys():
                 payertotal[obj.uname] = 0
             payertotal[obj.uname] += float(obj.price)
+
+    tiangous = list(payertotal.items())
+    tiangous.sort(key=lambda x: x[1], reverse=True)
+    tiangous = array2label(tiangous, num3)
     text += printgifts(payertotal, num3)
     text += others(totallist)
 
@@ -339,7 +375,7 @@ def runanalysis(files, works=["弹幕密度统计图"], plot_type="Matplotlib", 
         plt.savefig(figure_path, dpi=300, bbox_inches='tight')
         file_output.append(figure_path)
 
-    return gr.Plot.update(visible=sigfigure, value=plt), gr.Gallery.update(visible=cloud_visiable, value=cloud), file_output, text
+    return gr.Plot.update(visible=sigfigure, value=plt), gr.Gallery.update(visible=cloud_visiable, value=cloud), danmunums, gatlings, tiangous, file_output, text
 
 
 def outbreak(plot_type, r, month, countries, social_distancing):
@@ -382,9 +418,9 @@ inputs = [
         ["文本框内容", "弹幕密度统计图", "弹幕云", "词云", ], label="输出内容(输出弹幕云&词云会消耗较多时间)", value=["弹幕密度统计图"]
     ),
     gr.Dropdown(["Matplotlib", "Plotly"], label="绘图模式", value="Matplotlib"),
-    gr.Slider(0, 500, value=30, label="弹幕内容排行榜"),
-    gr.Slider(0, 500, value=20, label="水友弹幕互动排行榜"),
-    gr.Slider(0, 500, value=10, label="直播付费金额排行榜"),
+    gr.Slider(0, 500, value=30, label=水友弹幕互动排行榜),
+    gr.Slider(0, 500, value=20, label=水友弹幕互动排行榜),
+    gr.Slider(0, 500, value=10, label=直播付费金额排行榜),
     gr.Checkbox(label="弹幕密度统计图使用相对时间", value=True),
     gr.Slider(0, 60, value=2, label="统计图时间间隔(分钟)"),
 ]
@@ -395,6 +431,9 @@ outputs = [gr.Plot(label="弹幕密度统计图", visible=False),
                grid=[1, 1, 2, 2, 3], height="auto", container=False),
            #    gr.Gallery(type="filepath", label="弹幕云").style(height="auto"),
            #    gr.Gallery(type="filepath", label="弹幕词云").style(height="auto"),
+           gr.Label(label=水友弹幕互动排行榜),
+           gr.Label(label=水友弹幕互动排行榜),
+           gr.Label(label=直播付费金额排行榜),
            gr.File(label="输出文件", file_count="multiple"),
            gr.TextArea(label="分析结果"),
            ]
