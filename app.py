@@ -123,7 +123,7 @@ def others(totallist):
 # 制作弹幕密度统计图
 
 
-def generatechart(checkbox_time_offset):
+def generatechart(objects, ref_time, starttime, delta, title):
     from datetime import timedelta
     import matplotlib.pyplot as plt
     import matplotlib.ticker as ticker
@@ -135,19 +135,14 @@ def generatechart(checkbox_time_offset):
     # 对象重新排序
     objects.sort(key=lambda x: x.time, reverse=False)
     matplotlib.rcParams['font.sans-serif'] = ['SimHei']
-    arraystart = datetime.fromtimestamp(starttime / 1000)
     timearray0 = datetime.fromtimestamp(objects[0].time)
     danmucount = 0
     plt.figure(figsize=(16, 9))
-    if numpath == 1:
-        plt.title(arraystart.strftime("%Y-%m-%d %H:%M ") +
-                  livename + "  弹幕密度统计图", fontsize=18)
-    else:
-        plt.title("弹幕密度统计图", fontsize=18)
+    plt.title(title, fontsize=18)
 
     time_8hour = timedelta(hours=8)
     time_offset = datetime.fromtimestamp(0)
-    if checkbox_time_offset == 1:
+    if ref_time:
         time_offset = datetime.fromtimestamp(
             starttime / 1000) - time_offset + time_8hour
     else:
@@ -178,14 +173,13 @@ def generatechart(checkbox_time_offset):
     pltxs.append((timearray0-time_offset).strftime("%H:%M"))
     pltys.append(danmucount / delta)
     # 用x,y坐标列表生成统计图
-    plt.xlim(pltxs.min(), pltxs.max())
+    # plt.xlim(pltxs.min(), pltxs.max())
     plt.bar(pltxs,
             pltys,
             # align='edge',
             color='lightblue')
-    plt.savefig("output//" + "弹幕密度_" + vtbname + '_' +
-                livename + ".png", dpi=300, bbox_inches='tight')
-    text2.insert('end', "已生成弹幕密度统计图\n")
+
+    return plt
 
 # 制作词云
 
@@ -219,7 +213,7 @@ def generatecloud(totallist, cloud):
  # delta=True 弹幕密度统计图使用相对时间, sigfiguretime=2 统计图时间间隔(分钟)
 
 
-def runanalysis(files, works=["弹幕密度统计图"], plot_type="Matplotlib", num1=30, num2=20, num3=10, delta=True, sigfiguretime=2):
+def runanalysis(files, works=["弹幕密度统计图"], plot_type="Matplotlib", num1=30, num2=20, num3=10, ref_time=True, sigfiguretime=2):
     os.makedirs('/tmp/output', exist_ok=True)
     log_text = "分析开始时间：{}\n".format(datetime.now())
     # print(files)
@@ -321,12 +315,6 @@ def runanalysis(files, works=["弹幕密度统计图"], plot_type="Matplotlib", 
     # print("cloud=", cloud)
     cloud = generatecloud(totallist, cloud)
     file_output.extend(cloud)
-    # text1.see(tk.END)
-    # if sigfigure:
-    #     generatechart(sigfiguretime)
-
-    # text2.insert('end', "数据分析完成\n\n")
-    # text2.see(tk.END)
 
     if (len(text) > 0):
         text_path = "/tmp/output/" + live.vtbname + '_' + live.livename + ".txt"
@@ -339,8 +327,19 @@ def runanalysis(files, works=["弹幕密度统计图"], plot_type="Matplotlib", 
         text = text_summary
 
     sigfigure = "弹幕密度统计图" in works
+    if sigfigure:
+        figure_title = "弹幕密度统计图"
+        if len(files) == 1:
+            arraystart = datetime.fromtimestamp(live.starttime / 1000)
+            figure_title = arraystart.strftime(
+                "%Y-%m-%d %H:%M ") + live. livename + "  弹幕密度统计图"
+        plt = generatechart(objects, ref_time, live.starttime,
+                            sigfiguretime, figure_title)
+        figure_path = "/tmp/output/" + figure_title + ".png"
+        plt.savefig(figure_path, dpi=300, bbox_inches='tight')
+        file_output.append(figure_path)
 
-    return gr.Plot.update(visible=sigfigure), gr.Gallery.update(visible=cloud_visiable, value=cloud), file_output, text
+    return gr.Plot.update(visible=sigfigure, value=plt), gr.Gallery.update(visible=cloud_visiable, value=cloud), file_output, text
 
 
 def outbreak(plot_type, r, month, countries, social_distancing):
