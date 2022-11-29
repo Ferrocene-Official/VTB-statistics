@@ -1,23 +1,23 @@
 from DanmuMerge import merge_xinke as merge
-from datetime import datetime
-import threading
-import ctypes
-import tkinter as tk
 import os
 import json
-import io
-import time
-import pandas as pd
 import plotly.express as px
-import numpy as np
-import matplotlib.pyplot as plt
 import gradio as gr
-from math import sqrt
-import matplotlib
 from datetime import timedelta
+from datetime import datetime
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+from matplotlib import font_manager
+import matplotlib
+import wordcloud
+import jieba
+
 matplotlib.use("Agg")
 
-fontname = ["黑体", "楷体"]
+fontname = ["SourceHanSansSC-Normal.otf", "楷体"]
+font_manager.fontManager.addfont(fontname[0])
+for font in font_manager.fontManager.ttflist:
+    print(font.name, " - ",font.fname)
 
 弹幕内容排行榜 = "弹幕内容排行榜"
 水友弹幕互动排行榜 = "水友弹幕互动排行榜"
@@ -127,7 +127,6 @@ def generatechartData(objects, ref_time, starttime, dtime):
         obj.time = obj.time % 86400
     # 对象重新排序
     objects.sort(key=lambda x: x.time, reverse=False)
-    matplotlib.rcParams['font.sans-serif'] = ['SimHei']
     timearray0 = datetime.fromtimestamp(objects[0].time)
     danmucount = 0
 
@@ -161,14 +160,8 @@ def generatechartData(objects, ref_time, starttime, dtime):
 
 # 绘制弹幕密度统计图
 
-
 def generatechart(pltxs, pltys, dtime, title):
-    from datetime import timedelta
-    import matplotlib.pyplot as plt
-    import matplotlib.ticker as ticker
-    import matplotlib
-
-    matplotlib.rcParams['font.sans-serif'] = ['SimHei']
+    matplotlib.rcParams['font.sans-serif'] = ['Source Han Sans SC']
     plt.figure(figsize=(16, 9))
     plt.title(title, fontsize=18)
 
@@ -188,10 +181,9 @@ def generatechart(pltxs, pltys, dtime, title):
 
 
 def generatecloud(totallist, cloud):
-    import wordcloud
-    import jieba
     result = []
-    w = wordcloud.WordCloud(font_path="msyh.ttc",
+    w = wordcloud.WordCloud(
+                            font_path=fontname[0],
                             collocations=False,
                             width=2000,
                             height=2000,
@@ -352,7 +344,6 @@ def runanalysis(files, works=[弹幕密度统计图], plot_type="Matplotlib", nu
         plt = None
         pltxs, pltys = generatechartData(objects, ref_time, live.starttime,
                                          dtime)
-        df = pd.DataFrame({"Hour": pltxs})
         if plot_type == "Plotly":
             fig = px.line(y=pltys, x=pltxs)
             fig.update_layout(
@@ -405,7 +396,7 @@ demo = gr.Interface(
             ["文本框内容", "弹幕密度统计图"]],
     ],
     cache_examples=False,
-    description="本程序用于分析 https://matsuri.icu/ 网站上JSON格式的直播数据记录"
+    description="本程序用于分析 https://matsuri.icu/ 网站上JSON格式的直播数据记录，基于 https://github.com/Ferrocene-Official/VTB-statistics"
 )
 
 if __name__ == "__main__":
